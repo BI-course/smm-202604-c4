@@ -6,6 +6,5 @@ joblib
 scikit-learn
 imbalanced-learn
 imblearn
-mlxtend
 flask
 flask-cors

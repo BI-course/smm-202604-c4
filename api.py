@@ -310,6 +310,7 @@ Member 2:
 import os
 import joblib
 import pandas as pd
+import numpy as np
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -379,36 +380,63 @@ distress_classification_pipeline = joblib.load(
 )
 
 # ---------------------------------------------------------
-# MEMBER 2: CLUSTERING
+# MEMBER 2: CLUSTERING AND ASSOCIATION RULES
 # ---------------------------------------------------------
+# Both artifacts are loaded ONCE at startup (never inside a route, and never
+# retrained here). If a file is missing the app fails immediately, which is
+# better than a half-working API.
 
-clustering_artifact = load_optional_artifact(
-    "kmeans_mall_customer_segmentation.joblib"
+# Clustering: the preprocessing Pipeline (StandardScaler -> KNNImputer) and the
+# fitted K-Means were saved as two separate files in the clustering lab.
+customer_preprocessor = joblib.load(
+    os.path.join(MODEL_DIR, "customer_preprocessor.joblib")
+)
+customer_kmeans = joblib.load(
+    os.path.join(MODEL_DIR, "customer_kmeans.joblib")
 )
 
-if clustering_artifact is not None:
-    clustering_scaler = clustering_artifact["scaler"]
-    clustering_kmeans = clustering_artifact["kmeans"]
-else:
-    clustering_scaler = None
-    clustering_kmeans = None
+# Read the expected input columns from the artifact itself instead of
+# hard-coding them, so the API can never drift from the trained model.
+CUSTOMER_FEATURES = list(customer_preprocessor.feature_names_in_)
 
-# ---------------------------------------------------------
-# MEMBER 2: ASSOCIATION RULES
-# ---------------------------------------------------------
+# Cluster centres are stored in scaled units. Convert them back to real units
+# (days, orders per year, KES, categories) so each segment can be explained.
+CUSTOMER_SEGMENT_PROFILES = {
+    cluster_id: {
+        feature: round(float(value), 2)
+        for feature, value in zip(CUSTOMER_FEATURES, centre)
+    }
+    for cluster_id, centre in enumerate(
+        customer_preprocessor.named_steps["scale"].inverse_transform(
+            customer_kmeans.cluster_centers_
+        )
+    )
+}
+CUSTOMER_SEGMENT_NAMES = {
+    0: "Occasional High Spenders",
+    1: "Loyal High Spenders",
+    2: "Dormant Customers",
+    3: "New/Infrequent Low Spenders",
+    4: "Frequent Moderate Spenders",
+}
 
-arm_artifact = load_optional_artifact(
-    "apriori_recommendation_rules.joblib"
+# Association rules: a dict holding the mined rules table plus lookups.
+streaming_artifact = joblib.load(
+    os.path.join(MODEL_DIR, "streaming_recommender.joblib")
 )
+streaming_rules = streaming_artifact["rules"]
+streaming_rule_index = streaming_artifact["rule_index"]
+streaming_show_lookup = streaming_artifact["show_lookup"]
+streaming_name_to_id = streaming_artifact["name_to_id"]
+streaming_popularity = streaming_artifact["popularity"]
 
-if arm_artifact is not None:
-    recommendation_lookup = arm_artifact["recommendation_lookup"]
-    sku_lookup = arm_artifact["sku_lookup"]
-else:
-    recommendation_lookup = None
-    sku_lookup = None
+# Lower-case title -> show_id, so "crime city" and "Crime City" both work.
+streaming_title_to_id = {
+    title.lower(): show_id
+    for title, show_id in streaming_name_to_id.items()
+}
 
-print("Member 1 models loaded successfully.")
+print("All the artifacts have been loaded. The API is ready.")
 
 
 # ---------------------------------------------------------
@@ -453,9 +481,8 @@ def predict_daily_sales_revenue():
             input_row
         )[0]
 
-        # Confirm whether the training notebook used log1p
-        # before adding an inverse transformation here.
-        predicted_revenue = float(prediction)
+
+        predicted_revenue = float(np.expm1(prediction))
 
         return jsonify({
             "predicted_daily_sale_revenue_kes": round(
@@ -531,36 +558,80 @@ def predict_distress_risk():
 
 # =========================================================
 # 3. MEMBER 2 - CLUSTERING
+# Assign a customer to one of the 5 K-Means segments
+#
+# Sample request (cURL):
+#   curl -X POST http://127.0.0.1:5000/api/v1/models/customer-segmenter/predictions \
+#        -H "Content-Type: application/json" \
+#        -d '{"recency_days": 20, "frequency_per_year": 22,
+#             "avg_order_value_kes": 8000, "num_categories_purchased": 6}'
+#
+# A field may be null: the saved preprocessing pipeline (KNNImputer) fills it.
 # =========================================================
 
 @app.route(
-    "/api/v1/models/mall-customer-segmenter/predictions",
+    "/api/v1/models/customer-segmenter/predictions",
     methods=["POST"]
 )
 def predict_customer_segment():
-
-    if clustering_scaler is None or clustering_kmeans is None:
-        return jsonify({
-            "error": "Clustering model is not available yet."
-        }), 503
 
     payload, error = get_json_payload()
 
     if error is not None:
         return error
 
-    input_row = pd.DataFrame([payload])
+    missing = [f for f in CUSTOMER_FEATURES if f not in payload]
+
+    if missing:
+        return jsonify({
+            "error": "Missing required field(s).",
+            "missing": missing,
+            "expected_fields": CUSTOMER_FEATURES
+        }), 400
+
+    values = {}
+
+    for feature in CUSTOMER_FEATURES:
+        value = payload[feature]
+
+        if value is None:
+            values[feature] = np.nan
+        elif (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not np.isfinite(value)
+            or value < 0
+        ):
+            return jsonify({
+                "error": f"'{feature}' must be a non-negative number or null.",
+                "received": value
+            }), 400
+        else:
+            values[feature] = float(value)
+
+    if all(np.isnan(v) for v in values.values()):
+        return jsonify({
+            "error": "At least one field must have a value."
+        }), 400
 
     try:
-        scaled_input = clustering_scaler.transform(input_row)
+        # One row, columns in the order the pipeline was trained on.
+        input_row = pd.DataFrame([values], columns=CUSTOMER_FEATURES)
 
-        assigned_cluster = int(
-            clustering_kmeans.predict(scaled_input)[0]
-        )
+        # Same two steps as training: scale + impute, then K-Means.
+        prepared = customer_preprocessor.transform(input_row)
+        prepared = pd.DataFrame(prepared, columns=CUSTOMER_FEATURES)
+
+        assigned_cluster = int(customer_kmeans.predict(prepared)[0])
 
         return jsonify({
             "assigned_cluster": assigned_cluster,
-            "model": "K-Means (k=5)"
+            "segment_name": CUSTOMER_SEGMENT_NAMES[assigned_cluster],
+            "segment_profile": CUSTOMER_SEGMENT_PROFILES[assigned_cluster],
+            "missing_values_imputed": [
+                f for f, v in values.items() if np.isnan(v)
+            ],
+            "model": "K-Means (k=5, scaled + KNN-imputed features)"
         })
 
     except (ValueError, TypeError, KeyError) as error:
@@ -572,76 +643,141 @@ def predict_customer_segment():
 
 # =========================================================
 # 4. MEMBER 2 - ASSOCIATION RULE RECOMMENDATIONS
+# Recommend streaming shows from what a viewer has already watched
+#
+# Sample request (cURL):
+#   curl -X POST http://127.0.0.1:5000/api/v1/models/streaming-recommender/predictions \
+#        -H "Content-Type: application/json" \
+#        -d '{"watched": ["S11", "S15"], "top_n": 3}'
+#
+# "watched" accepts show IDs (S01..S15) or show titles ("Crime City").
 # =========================================================
 
 @app.route(
-    "/api/v1/models/ecommerce-recommender/predictions",
+    "/api/v1/models/streaming-recommender/predictions",
     methods=["POST"]
 )
-def recommend_products():
-
-    if recommendation_lookup is None or sku_lookup is None:
-        return jsonify({
-            "error": "Recommendation model is not available yet."
-        }), 503
+def recommend_shows():
 
     payload, error = get_json_payload()
 
     if error is not None:
         return error
 
-    cart_items = payload.get("cart", [])
+    watched_input = payload.get("watched")
 
-    if not isinstance(cart_items, list):
+    if not isinstance(watched_input, list) or not watched_input:
         return jsonify({
-            "error": "'cart' must be a list of product SKUs."
+            "error": "'watched' must be a non-empty list of show IDs or titles.",
+            "example": {"watched": ["S11", "S15"], "top_n": 3}
+        }), 400
+
+    top_n = payload.get("top_n", 3)
+
+    if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1:
+        return jsonify({
+            "error": "'top_n' must be a positive whole number."
+        }), 400
+
+    # Turn each item (ID or title) into a show ID; collect any we don't know.
+    watched = set()
+    unknown = []
+
+    for item in watched_input:
+        key = str(item).strip()
+
+        if key.upper() in streaming_show_lookup.index:
+            watched.add(key.upper())
+        elif key.lower() in streaming_title_to_id:
+            watched.add(streaming_title_to_id[key.lower()])
+        else:
+            unknown.append(item)
+
+    if unknown:
+        return jsonify({
+            "error": "Unknown show(s) in 'watched'.",
+            "unknown": unknown,
+            "valid_show_ids": sorted(streaming_show_lookup.index)
         }), 400
 
     try:
-        cart = set(cart_items)
-        top_n = int(payload.get("top_n", 3))
-
-        if top_n < 1:
-            return jsonify({
-                "error": "'top_n' must be positive."
-            }), 400
+        # Only look at rules that mention a watched show (via rule_index),
+        # then keep those whose WHOLE antecedent has been watched.
+        candidate_rule_ids = {
+            rule_id
+            for show_id in watched
+            for rule_id in streaming_rule_index.get(show_id, [])
+        }
 
         candidates = {}
 
-        for antecedent, consequent_list in recommendation_lookup.items():
+        for rule_id in candidate_rule_ids:
+            rule = streaming_rules.loc[rule_id]
 
-            if antecedent.issubset(cart):
+            if not rule["antecedents"].issubset(watched):
+                continue
 
-                for sku, confidence, lift in consequent_list:
+            for show_id in rule["consequents"]:
+                if show_id in watched:
+                    continue
 
-                    if sku not in cart:
+                score = (float(rule["confidence"]), float(rule["lift"]))
 
-                        if (
-                            sku not in candidates
-                            or confidence > candidates[sku][0]
-                        ):
-                            candidates[sku] = (confidence, lift)
+                if show_id not in candidates or score > candidates[show_id][0]:
+                    candidates[show_id] = (
+                        score,
+                        float(rule["support"]),
+                        rule["antecedents"]
+                    )
 
         ranked = sorted(
-            candidates.items(),
-            key=lambda item: item[1][0],
-            reverse=True
+            candidates.items(), key=lambda item: item[1][0], reverse=True
         )[:top_n]
 
-        recommendations = [
-            {
-                "sku": str(sku),
-                "product_name": str(
-                    sku_lookup.loc[sku, "product_name"]
-                ),
-                "confidence": round(float(confidence), 3),
-                "lift": round(float(lift), 2)
+        def show_details(show_id):
+            row = streaming_show_lookup.loc[show_id]
+            return {
+                "show_id": show_id,
+                "title": str(row["item_name"]),
+                "category": str(row["category"]),
+                "avg_episode_minutes": int(row["avg_episode_minutes"])
             }
-            for sku, (confidence, lift) in ranked
-        ]
+
+        if ranked:
+            recommendations = [
+                {
+                    **show_details(show_id),
+                    "confidence": round(confidence, 3),
+                    "lift": round(lift, 2),
+                    "support": round(support, 3),
+                    "because_you_watched": sorted(
+                        streaming_show_lookup.loc[a, "item_name"]
+                        for a in antecedent
+                    )
+                }
+                for show_id, ((confidence, lift), support, antecedent)
+                in ranked
+            ]
+            basis = "association_rules"
+        else:
+            # Cold start: no mined rule matches this combination of shows,
+            # so fall back to the most popular shows not yet watched.
+            popular = streaming_popularity.drop(
+                labels=list(watched), errors="ignore"
+            ).sort_values(ascending=False).head(top_n)
+
+            recommendations = [
+                {
+                    **show_details(show_id),
+                    "popularity": round(float(share), 3)
+                }
+                for show_id, share in popular.items()
+            ]
+            basis = "popularity_fallback"
 
         return jsonify({
-            "cart": sorted(str(item) for item in cart),
+            "watched": sorted(watched),
+            "recommendation_basis": basis,
             "recommendations": recommendations,
             "model": "Apriori Association Rules"
         })
