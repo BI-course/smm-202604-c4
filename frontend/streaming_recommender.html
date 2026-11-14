@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>E-Commerce Recommender</title>
+<title>Streaming Show Recommender</title>
 <style>
   :root {
     --accent: #ea580c;
@@ -77,15 +77,15 @@
   <div class="card">
     <a class="back-link" href="index.html">&larr; All endpoints</a>
     <span class="badge">Association Rules</span>
-    <h1>Shopping Cart Recommender</h1>
-    <p class="lead">Calls <code>POST /api/v1/models/ecommerce-recommender/predictions</code></p>
+    <h1>Streaming Show Recommender</h1>
+    <p class="lead">Calls <code>POST /api/v1/models/streaming-recommender/predictions</code></p>
 
-    <form id="predictForm">
-      <label for="cart">Cart SKUs <span class="hint">(comma-separated, e.g. P01, P04 or H06, H07)</span></label>
-      <input type="text" id="cart" value="P01, P04" required>
+    <form id="predictForm" novalidate>
+      <label for="watched">Shows watched <span class="hint">(comma-separated IDs or titles, e.g. S11, S15 or Crime City, Silent Witness Redux)</span></label>
+      <input type="text" id="watched" value="S11, S15">
 
       <label for="top_n">Number of Recommendations</label>
-      <input type="number" id="top_n" value="3" min="1" max="10" required>
+      <input type="number" id="top_n" value="3" min="1" max="10">
 
       <button type="submit" id="submitBtn">Get Recommendations</button>
     </form>
@@ -93,63 +93,60 @@
     <div id="result"></div>
   </div>
 
+<script src="config.js"></script>
 <script>
-  const protocol = window.location.protocol;                 // "http:", "https:", or "file:"
-  const hostname = window.location.hostname || "127.0.0.1";  // hostname is "" for a file:// page
-  const isSecure = protocol === "https:";
-
-  const API_ORIGIN = `${isSecure ? "https" : "http"}://${hostname}:${isSecure ? "443" : "5000"}`;
-  const API_URL = `${API_ORIGIN}/api/v1/models/ecommerce-recommender/predictions`;
-
-  // const API_URL = "http://127.0.0.1:5000/api/v1/models/ecommerce-recommender/predictions";
+  const PATH = "/api/v1/models/streaming-recommender/predictions";
 
   document.getElementById("predictForm").addEventListener("submit", async function (e) {
     e.preventDefault();
     const submitBtn = document.getElementById("submitBtn");
     const result = document.getElementById("result");
 
-    const cartSkus = document.getElementById("cart").value
+    const missing = missingFields(["watched", "top_n"]);
+    if (missing.length > 0) {
+      showError(result, "Please fill in: " + missing.join(", "));
+      return;
+    }
+
+    const watched = document.getElementById("watched").value
       .split(",")
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
-    const payload = {
-      cart: cartSkus,
-      top_n: parseInt(document.getElementById("top_n").value),
-    };
+    if (watched.length === 0) {
+      showError(result, "Please enter at least one show ID or title.");
+      return;
+    }
+
+    const topN = Number(document.getElementById("top_n").value);
+    if (!Number.isInteger(topN) || topN < 1) {
+      showError(result, "Number of recommendations must be a whole number of 1 or more.");
+      return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Fetching...";
     result.className = "";
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Server responded ${response.status}: ${text.slice(0, 200)}`);
-      }
-      const data = await response.json();
+      const data = await postJson(PATH, { watched: watched, top_n: topN });
 
-      if (data.recommendations.length === 0) {
-        result.className = "show ok";
-        result.innerHTML = `Model: ${data.model}<br><br>No rules matched this cart -- try a different SKU combination.`;
-      } else {
-        const items = data.recommendations.map(r => `
-          <li>
-            <span>${r.product_name} <span class="meta">(${r.sku})</span></span>
-            <span class="meta">conf ${r.confidence} &middot; lift ${r.lift}</span>
-          </li>`).join("");
-        result.className = "show ok";
-        result.innerHTML = `Model: ${data.model}<ul class="recs">${items}</ul>`;
-      }
+      const note = data.recommendation_basis === "popularity_fallback"
+        ? `<div class="meta" style="margin-top:8px;">No viewing pattern matched these shows, so these are the most popular shows you have not watched.</div>`
+        : "";
+
+      const items = data.recommendations.map(r => `
+        <li>
+          <span>${r.title} <span class="meta">(${r.show_id} &middot; ${r.category} &middot; ${r.avg_episode_minutes} min)</span>
+            ${r.because_you_watched ? `<br><span class="meta">because you watched ${r.because_you_watched.join(" + ")}</span>` : ""}
+          </span>
+          <span class="meta">${r.confidence !== undefined ? `conf ${r.confidence} &middot; lift ${r.lift}` : `popularity ${r.popularity}`}</span>
+        </li>`).join("");
+
+      result.className = "show ok";
+      result.innerHTML = `Model: ${data.model}${note}<ul class="recs">${items}</ul>`;
     } catch (err) {
-      result.className = "show err";
-      result.textContent = "Request failed: " + err.message +
-        " (is api.py running on http://127.0.0.1:5000 ?)";
+      showError(result, "Request failed: " + err.message);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "Get Recommendations";

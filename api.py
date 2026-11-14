@@ -475,12 +475,14 @@ def predict_daily_sales_revenue():
         return error
 
     input_row = pd.DataFrame([payload])
+    int_cols = input_row.select_dtypes(include=["int64", "int32"]).columns
+    if len(int_cols) > 0:
+        input_row[int_cols] = input_row[int_cols].astype("float64")
 
     try:
         prediction = revenue_regression_pipeline.predict(
             input_row
         )[0]
-
 
         predicted_revenue = float(np.expm1(prediction))
 
@@ -497,8 +499,6 @@ def predict_daily_sales_revenue():
             "error": "Unable to generate revenue prediction.",
             "details": str(error)
         }), 400
-
-
 # =========================================================
 # 2. MEMBER 1 - CLASSIFICATION
 # Predict business distress risk

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Sales Revenue Predictor</title>
+<style>
+  :root {
+    --accent: #4f46e5;
+    --accent-dark: #4338ca;
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --ok-bg: #eef2ff;
+    --err-bg: #fef2f2;
+    --err-text: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06);
+    max-width: 560px;
+    width: 100%;
+    padding: 32px 32px 28px;
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+  }
+  .back-link:hover { color: var(--accent); }
+  .badge {
+    display: inline-block;
+    background: var(--ok-bg);
+    color: var(--accent-dark);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 16px 0 6px;
+    color: var(--text);
+  }
+  label .hint { font-weight: 400; color: var(--muted); }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover { background: var(--accent-dark); }
+  button:disabled { background: #a5a6f6; cursor: default; }
+  #result {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    display: none;
+  }
+  #result.show { display: block; }
+  #result.ok { background: var(--ok-bg); color: var(--accent-dark); }
+  #result.err { background: var(--err-bg); color: var(--err-text); }
+  #result .figure { font-size: 22px; font-weight: 700; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <a class="back-link" href="index.html">&larr; All endpoints</a>
+    <span class="badge">Regression</span>
+    <h1>Store Daily Sales Revenue Predictor</h1>
+    <p class="lead">Calls <code>POST /api/v1/models/daily-sales-revenue-regressor/predictions</code></p>
+
+    <form id="predictForm" novalidate>
+      <div class="row"><div><label for="store_format">Store Format</label><select id="store_format"><option>Convenience</option><option>Hypermarket</option><option>Kiosk</option><option selected>Supermarket</option></select></div><div><label for="location_type">Location Type</label><select id="location_type"><option>CBD</option><option selected>Mall</option><option>Residential</option><option>Street</option></select></div></div>
+      <div class="row"><div><label for="delivery_available">Delivery Available</label><select id="delivery_available"><option selected>Yes</option><option>No</option></select></div><div><label for="store_size_category">Store Size</label><select id="store_size_category"><option>Small</option><option selected>Medium</option><option>Large</option></select></div></div>
+      <div class="row"><div><label for="store_age_years">Store Age (years)</label><input type="number" id="store_age_years" value="6" step="0.1" min="0"></div><div><label for="store_size_sqm">Store Size (sqm)</label><input type="number" id="store_size_sqm" value="200" min="1"></div></div>
+      <div class="row"><div><label for="num_staff">Number of Staff</label><input type="number" id="num_staff" value="18" min="0"></div><div><label for="promotions_active">Promotions Active</label><input type="number" id="promotions_active" value="1" min="0"></div></div>
+      <div class="row"><div><label for="footfall_count">Daily Footfall</label><input type="number" id="footfall_count" value="400" min="0"></div><div><label for="loyalty_program_members">Loyalty Members</label><input type="number" id="loyalty_program_members" value="500" min="0"></div></div>
+      <div class="row"><div><label for="online_order_count">Online Orders <span class="hint">(blank if offline-only)</span></label><input type="number" id="online_order_count" value="35" min="0"></div><div><label for="avg_basket_size_kes">Avg Basket Size (KES) <span class="hint">(optional)</span></label><input type="number" id="avg_basket_size_kes" value="1800" min="0"></div></div>
+      <div><label for="local_events_nearby">Local Events Nearby</label><input type="number" id="local_events_nearby" value="0" min="0"></div>
+
+      <button type="submit" id="submitBtn">Predict Daily Revenue</button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+<script src="config.js"></script>
+<script>
+  const PATH = "/api/v1/models/daily-sales-revenue-regressor/predictions";
+
+  // Required boxes. online_order_count and avg_basket_size_kes may be blank:
+  // the saved pipeline's imputers handle a missing value.
+  const REQUIRED = ["store_age_years", "store_size_sqm", "num_staff", "promotions_active",
+                    "footfall_count", "loyalty_program_members", "local_events_nearby"];
+
+  document.getElementById("predictForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const submitBtn = document.getElementById("submitBtn");
+    const result = document.getElementById("result");
+
+    const missing = missingFields(REQUIRED);
+    if (missing.length > 0) {
+      showError(result, "Please fill in: " + missing.join(", "));
+      return;
+    }
+
+    const payload = {
+      store_format: document.getElementById("store_format").value,
+      location_type: document.getElementById("location_type").value,
+      delivery_available: document.getElementById("delivery_available").value,
+      store_size_category: document.getElementById("store_size_category").value,
+      store_age_years: numberOrNull("store_age_years"),
+      store_size_sqm: numberOrNull("store_size_sqm"),
+      num_staff: numberOrNull("num_staff"),
+      promotions_active: numberOrNull("promotions_active"),
+      footfall_count: numberOrNull("footfall_count"),
+      loyalty_program_members: numberOrNull("loyalty_program_members"),
+      online_order_count: numberOrNull("online_order_count"),
+      avg_basket_size_kes: numberOrNull("avg_basket_size_kes"),
+      local_events_nearby: numberOrNull("local_events_nearby"),
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Predicting...";
+    result.className = "";
+
+    try {
+      const data = await postJson(PATH, payload);
+      result.className = "show ok";
+      result.innerHTML =
+        `Model: ${data.model}` +
+        `<div class="figure">KES ${Number(data.predicted_daily_sale_revenue_kes).toLocaleString()} per day</div>`;
+    } catch (err) {
+      showError(result, "Request failed: " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Predict Daily Revenue";
+    }
+  });
+</script>
+</body>
+</html>
