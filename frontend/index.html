@@ -151,34 +151,34 @@
 
   <h2>API Endpoints &amp; Sample Frontends</h2>
   <div class="endpoint-grid">
-    <a class="endpoint-card c1" href="sme_revenue_regressor.html">
+    <a class="endpoint-card c1" href="daily_sales_revenue_regressor.html">
       <span class="tag">Regression</span>
-      <h3>SME Revenue Predictor</h3>
-      <p>Predicts monthly revenue (KES) for an SME.</p>
-      <p><code>/api/v1/models/sme-revenue-regressor/predictions</code></p>
+      <h3>Daily Sales Revenue Predictor</h3>
+      <p>Predicts a store's daily sales revenue (KES).</p>
+      <p><code>/api/v1/models/daily-sales-revenue-regressor/predictions</code></p>
     </a>
-    <a class="endpoint-card c2" href="sme_credit_risk_classifier.html">
+    <a class="endpoint-card c2" href="distress_risk_classifier.html">
       <span class="tag">Classification</span>
-      <h3>Credit Risk Classifier</h3>
-      <p>Predicts an SME loan applicant's risk category.</p>
-      <p><code>/api/v1/models/sme-credit-risk-classifier/predictions</code></p>
+      <h3>Distress Risk Classifier</h3>
+      <p>Classifies a business as Healthy, Watch or Distressed.</p>
+      <p><code>/api/v1/models/distress-risk-classifier/predictions</code></p>
     </a>
-    <a class="endpoint-card c3" href="mall_customer_segmenter.html">
+    <a class="endpoint-card c3" href="customer_segmenter.html">
       <span class="tag">Clustering</span>
       <h3>Customer Segmenter</h3>
-      <p>Assigns a mall customer to one of five segments.</p>
-      <p><code>/api/v1/models/mall-customer-segmenter/predictions</code></p>
+      <p>Assigns a customer to one of five segments.</p>
+      <p><code>/api/v1/models/customer-segmenter/predictions</code></p>
     </a>
-    <a class="endpoint-card c4" href="ecommerce_recommender.html">
+    <a class="endpoint-card c4" href="streaming_recommender.html">
       <span class="tag">Association Rules</span>
-      <h3>Cart Recommender</h3>
-      <p>Recommends products for a shopping cart.</p>
-      <p><code>/api/v1/models/ecommerce-recommender/predictions</code></p>
+      <h3>Show Recommender</h3>
+      <p>Recommends streaming shows from what a viewer has watched.</p>
+      <p><code>/api/v1/models/streaming-recommender/predictions</code></p>
     </a>
   </div>
 </main>
 
-<footer>Open any card above directly in your browser -- no web server required. Remember to start <code>api.py</code> first.</footer>
+<footer>Open any card above directly in your browser -- no web server required. The API address is set in <code>config.js</code>.</footer>
 
 </body>
 </html>

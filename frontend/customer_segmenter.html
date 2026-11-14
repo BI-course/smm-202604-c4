@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mall Customer Segmenter</title>
+<title>Customer Segmenter</title>
 <style>
   :root {
     --accent: #7c3aed;
@@ -137,18 +137,12 @@
   <div class="card">
     <a class="back-link" href="index.html">&larr; All endpoints</a>
     <span class="badge">Clustering</span>
-    <h1>Mall Customer Segment Assignment</h1>
-    <p class="lead">Calls <code>POST /api/v1/models/mall-customer-segmenter/predictions</code></p>
+    <h1>Customer Segment Assignment</h1>
+    <p class="lead">Calls <code>POST /api/v1/models/customer-segmenter/predictions</code></p>
 
-    <form id="predictForm">
-      <label for="age">Age</label>
-      <input type="number" id="age" value="27" required>
-
-      <label for="income">Annual Income (k$)</label>
-      <input type="number" id="income" value="45" required>
-
-      <label for="spending">Spending Score (1-100)</label>
-      <input type="number" id="spending" min="1" max="100" value="72" required>
+    <form id="predictForm" novalidate>
+      <div class="row"><div><label for="recency_days">Days Since Last Order</label><input type="number" id="recency_days" value="20" min="0"></div><div><label for="frequency_per_year">Orders per Year</label><input type="number" id="frequency_per_year" value="22" step="0.1" min="0"></div></div>
+      <div class="row"><div><label for="avg_order_value_kes">Avg Order Value (KES)</label><input type="number" id="avg_order_value_kes" value="8000" min="0"></div><div><label for="num_categories_purchased">Categories Purchased</label><input type="number" id="num_categories_purchased" value="6" min="0"></div></div>
 
       <button type="submit" id="submitBtn">Assign Segment</button>
     </form>
@@ -156,89 +150,46 @@
     <div id="result"></div>
   </div>
 
+<script src="config.js"></script>
 <script>
-  const protocol = window.location.protocol;                 // "http:", "https:", or "file:"
-  const hostname = window.location.hostname || "127.0.0.1";  // hostname is "" for a file:// page
-  const isSecure = protocol === "https:";
+  const PATH = "/api/v1/models/customer-segmenter/predictions";
 
-  const API_ORIGIN = `${isSecure ? "https" : "http"}://${hostname}:${isSecure ? "443" : "5000"}`;
-  const API_URL = `${API_ORIGIN}/api/v1/models/mall-customer-segmenter/predictions`;
-
-  // const API_URL = "http://127.0.0.1:5000/api/v1/models/mall-customer-segmenter/predictions";
-
-  // Business-facing profile for each cluster id the K-Means model can
-  // return. This is reference material for a decision maker, so it only
-  // appears once a prediction has actually run -- shown here, not buried
-  // in the form, and with the matching cluster visually picked out.
-  const SEGMENT_PROFILES = {
-    0: { name: "Premium targets", stats: "Young (~33) &middot; High income &middot; High spending",
-         note: "Young, affluent, high spenders" },
-    1: { name: "Average, mature customers", stats: "Older (~56) &middot; Mid income &middot; Mid spending",
-         note: "Steady, middle-of-the-road behavior" },
-    2: { name: "High income, low engagement", stats: "Middle-aged (~40) &middot; High income &middot; Low spending",
-         note: "Affluent but currently untapped" },
-    3: { name: "Frugal / budget-conscious", stats: "Older (~46) &middot; Low income &middot; Low spending",
-         note: "Price-sensitive, low discretionary spend" },
-    4: { name: "Young enthusiastic spenders", stats: "Young (~25) &middot; Low-mid income &middot; High spending",
-         note: "High spending relative to income" },
-  };
-
-  function renderSegmentProfiles(assignedCluster) {
-    const rows = Object.entries(SEGMENT_PROFILES).map(([clusterId, profile]) => {
-      const isMatch = Number(clusterId) === assignedCluster;
-      return `
-        <div class="segment-row${isMatch ? " matched" : ""}">
-          <div class="cluster-id">${clusterId}</div>
-          <div>
-            <div class="name">${profile.name}</div>
-            <div class="stats">${profile.stats}</div>
-          </div>
-        </div>`;
-    }).join("");
-    return `<div class="segment-profiles">${rows}</div>`;
-  }
+  const REQUIRED = ["recency_days", "frequency_per_year",
+                    "avg_order_value_kes", "num_categories_purchased"];
 
   document.getElementById("predictForm").addEventListener("submit", async function (e) {
     e.preventDefault();
     const submitBtn = document.getElementById("submitBtn");
     const result = document.getElementById("result");
 
-    // Field names deliberately match the training data's own column names
-    // (including the units in the labels) -- the K-Means artifact's scaler
-    // was fit on columns named exactly this way.
-    const payload = {
-      "Age": parseInt(document.getElementById("age").value),
-      "Annual Income (k$)": parseFloat(document.getElementById("income").value),
-      "Spending Score (1-100)": parseFloat(document.getElementById("spending").value),
-    };
+    const missing = missingFields(REQUIRED);
+    if (missing.length > 0) {
+      showError(result, "Please fill in: " + missing.join(", "));
+      return;
+    }
+
+    const payload = {};
+    REQUIRED.forEach(id => { payload[id] = numberOrNull(id); });
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Assigning...";
     result.className = "";
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Server responded ${response.status}: ${text.slice(0, 200)}`);
-      }
-      const data = await response.json();
-      const profile = SEGMENT_PROFILES[data.assigned_cluster];
+      const data = await postJson(PATH, payload);
+      const p = data.segment_profile;
 
       result.className = "show ok";
       result.innerHTML =
         `<div class="model-line">Model: ${data.model}</div>` +
-        `<div class="figure">Cluster ${data.assigned_cluster}${profile ? " -- " + profile.name : ""}</div>` +
-        (profile ? `<div style="font-size:13px;color:var(--muted);margin-bottom:4px;">${profile.note}</div>` : "") +
-        renderSegmentProfiles(data.assigned_cluster);
+        `<div class="figure">${data.segment_name} <span style="font-size:14px;font-weight:400;">(cluster ${data.assigned_cluster})</span></div>` +
+        `<div style="font-size:13px;color:var(--muted);margin-top:8px;">Typical customer in this segment: ` +
+        `${Math.round(p.recency_days)} days since last order &middot; ` +
+        `${p.frequency_per_year.toFixed(1)} orders a year &middot; ` +
+        `KES ${Math.round(p.avg_order_value_kes).toLocaleString()} per order &middot; ` +
+        `${p.num_categories_purchased.toFixed(1)} categories</div>`;
     } catch (err) {
-      result.className = "show err";
-      result.textContent = "Request failed: " + err.message +
-        ` (is api.py running and reachable at ${API_ORIGIN} ?)`;
+      showError(result, "Request failed: " + err.message);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "Assign Segment";
