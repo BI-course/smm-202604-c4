@@ -1,0 +1,25 @@
+services:
+  flask-gunicorn-app:
+    image: servingmlmodels-flask-gunicorn-app:1.0.0
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.flask-gunicorn-app
+    expose:
+      - "8000"
+    restart: always
+
+  nginx:
+    image: servingmlmodels-nginx:1.0.0
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.nginx
+    ports:
+      - "80:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./container-volumes/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./container-volumes/nginx/certs:/etc/nginx/certs:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - flask-gunicorn-app
+    restart: always

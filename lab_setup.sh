@@ -37,6 +37,14 @@ mkdir -p \
     "$BASE_DIR/ubuntu/home-student" \
     "$BASE_DIR/nginx/certs"
 
+if [ ! -f "$BASE_DIR/nginx/certs/selfsigned.crt" ] || [ ! -f "$BASE_DIR/nginx/certs/selfsigned.key" ]; then
+    echo "Generating self-signed SSL certificate for Nginx..."
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout "$BASE_DIR/nginx/certs/selfsigned.key" \
+        -out "$BASE_DIR/nginx/certs/selfsigned.crt" \
+        -subj "/CN=localhost" 2>/dev/null || echo "Note: openssl not found or failed; certs must be generated manually."
+fi
+
 echo "Setting permissions..."
 
 # Safe permission handling
