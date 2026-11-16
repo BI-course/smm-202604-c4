@@ -7,7 +7,7 @@
 **Member 1:**
 
 | **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
+| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
@@ -15,7 +15,7 @@
 **Member 2:**
 
 | **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
+| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
@@ -23,7 +23,7 @@
 **Member 3:**
 
 | **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
+| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
@@ -31,7 +31,7 @@
 **Member 4:**
 
 | **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
+| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
@@ -39,19 +39,20 @@
 **Member 5:**
 
 | **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
+| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |     
-        |
+| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |
+|  |
 
 **Member 6:**
 
-| **Details**                                                                                                                           | **Comment** |
-|:--------------------------------------------------------------------------------------------------------------------------------------|:------------|
-| **Student ID**        165828                                **Name**                                 Daniela Dudi Awino 
-                                                    |             |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** 
+| **Details** | **Comment** |
+| :---------- | :---------- |
+
+| **Student ID** 165828 **Name** Daniela Dudi Awino
+| |
+| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?**
 I built the Streamlit Community Cloud app, which acts as a no-code demo UI. I designed a four-tab interface (one for each model) that loads the pre-trained .joblib artifacts directly into memory using joblib and @st.cache_resource. Through this, I learned how to translate backend machine learning models into interactive, user-friendly web applications, how to manage virtual environments and dependencies (imbalanced-learn), and how to deploy Streamlit apps to the cloud. Link to my branch: | https://github.com/BI-course/smm-202604-c4/tree/feature/gradio-space
 
 ## Chosen Level of Difficulty
@@ -78,11 +79,11 @@ Note that you are required to submit the link to the video and NOT the video its
 
 Fill in only the rows that apply to your chosen difficulty level (see Part C below). Leave a row blank if your tier does not require that deployment target.
 
-| **Deployment target**                             | **URL** |
-|:--------------------------------------------------|:--------|
-| Render (the full `api.py`, all endpoints)         |         |
-| Hugging Face Space (Gradio, one tab per model)    |         |
-| Streamlit Community Cloud app (one tab per model) |         |
+| **Deployment target**                             | **URL**                                       |
+| :------------------------------------------------ | :-------------------------------------------- |
+| Render (the full `api.py`, all endpoints)         |                                               |
+| Hugging Face Space (Gradio, one tab per model)    |                                               |
+| Streamlit Community Cloud app (one tab per model) | https://fmhzqmmgkfjqqqhvcudkgg.streamlit.app/ |
 
 ---
 
@@ -143,7 +144,7 @@ Why this is production-relevant beyond the model itself:
 
 - **Portability:** the same container image and the same trained artifacts run unmodified on your laptop, inside Docker, and on a managed cloud host.
 - **Consistency:** no "but it works on my machine" gap between what you demo locally and what a domain expert sees on a public URL.
-- **Separation of concerns:** a REST API (Render), a no-code demo UI (Hugging Face/Streamlit), and your own frontend (the Advanced-tier HTML pages) are three different ways of exposing the *same* underlying models to three different kinds of user -- a developer integrating your API, a non-technical domain expert validating it, and an end customer.
+- **Separation of concerns:** a REST API (Render), a no-code demo UI (Hugging Face/Streamlit), and your own frontend (the Advanced-tier HTML pages) are three different ways of exposing the _same_ underlying models to three different kinds of user -- a developer integrating your API, a non-technical domain expert validating it, and an end customer.
 
 ---
 
