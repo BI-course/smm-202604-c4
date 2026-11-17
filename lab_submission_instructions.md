@@ -43,7 +43,7 @@
 | **Student ID**                                                                                                                        |             |
 | **Name**                                                                                                                              |             |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |
-|  |
+|                                                                                                                                       |
 
 **Member 6:**
 
@@ -79,11 +79,11 @@ Note that you are required to submit the link to the video and NOT the video its
 
 Fill in only the rows that apply to your chosen difficulty level (see Part C below). Leave a row blank if your tier does not require that deployment target.
 
-| **Deployment target**                             | **URL**                                       |
-| :------------------------------------------------ | :-------------------------------------------- |
-| Render (the full `api.py`, all endpoints)         |                                               |
-| Hugging Face Space (Gradio, one tab per model)    |                                               |
-| Streamlit Community Cloud app (one tab per model) | https://fmhzqmmgkfjqqqhvcudkgg.streamlit.app/ |
+| **Deployment target**                             | **URL**                                                     |
+| :------------------------------------------------ | :---------------------------------------------------------- |
+| Render (the full `api.py`, all endpoints)         |                                                             |
+| Hugging Face Space (Gradio, one tab per model)    |                                                             |
+| Streamlit Community Cloud app (one tab per model) | https://smm-202604-c4-ucssviswc2txbs2t3pf6kx.streamlit.app/ |
 
 ---
 
