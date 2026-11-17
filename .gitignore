@@ -213,3 +213,8 @@ __marimo__/
 /roughwork
 /.devcontainer
 /lab_submission_ANSWERS
+
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
