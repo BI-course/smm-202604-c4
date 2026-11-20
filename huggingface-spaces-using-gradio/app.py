@@ -1,224 +1,595 @@
+
+import os
+import requests
 import gradio as gr
-import joblib
-import numpy as np
-import pandas as pd
-import spaces
-
-# -----------------------------------------------------------------------
-# Hugging Face's free tier now provisions new Gradio Spaces on ZeroGPU
-# hardware only (see the note in Step 2 below). None of this app's four
-# models needs a GPU -- every prediction below runs on plain scikit-learn
-# arrays -- but some free-tier Spaces fail to start reliably unless at
-# least one function is decorated with @spaces.GPU. This function does
-# nothing GPU-related; it exists only to satisfy that platform check.
-# Calling it once, here, registers it before Gradio launches below.
-@spaces.GPU
-def _warm_zerogpu():
-    return None
-
-_warm_zerogpu()
-
-# -----------------------------------------------------------------------
-# Load all four persisted artifacts ONCE, at import time -- the same
-# principle api.py uses: load once at startup, reuse across every request
-# (here, across every tab and every submit click), never inside a function.
-# -----------------------------------------------------------------------
-regression_pipeline = joblib.load("lasso_regressor_for_sme_revenue.joblib")
-classification_pipeline = joblib.load("svc_classifier_for_sme_credit_risk.joblib")
-
-clustering_artifact = joblib.load("kmeans_mall_customer_segmentation.joblib")
-clustering_scaler = clustering_artifact["scaler"]
-clustering_kmeans = clustering_artifact["kmeans"]
-
-arm_artifact = joblib.load("apriori_recommendation_rules.joblib")
-recommendation_lookup = arm_artifact["recommendation_lookup"]
-sku_lookup = arm_artifact["sku_lookup"]
 
 
-# -----------------------------------------------------------------------
-# 1. Regression -- predict monthly revenue (KES) for an SME
-# -----------------------------------------------------------------------
-def predict_revenue(sector, county, quarter, business_age_years, num_employees,
-                     owner_education_level, monthly_marketing_spend_kes,
-                     avg_daily_foot_traffic, online_presence_score,
-                     loan_amount_kes, interest_rate_pct, inflation_rate_pct,
-                     competitor_density, customer_satisfaction_score):
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+
+API_BASE_URL = os.getenv(
+    "API_BASE_URL",
+    "https://smm-202604-c4-clara.onrender.com"
+).rstrip("/")
+
+REQUEST_TIMEOUT = 90
+# ============================================================
+# SHARED API REQUEST FUNCTION
+# ============================================================
+
+def call_api(endpoint, payload):
+    """
+    Sends a JSON POST request to the Flask API
+    and returns the response as a dictionary.
+    """
+
+    url = f"{API_BASE_URL}{endpoint}"
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=REQUEST_TIMEOUT
+        )
+
+        try:
+            result = response.json()
+        except ValueError:
+            return {
+                "error": "The API returned an invalid JSON response.",
+                "status_code": response.status_code,
+                "response": response.text[:1000]
+            }
+
+        if not response.ok:
+            return {
+                "error": result.get(
+                    "error",
+                    "The API request failed."
+                ),
+                "details": result.get("details"),
+                "status_code": response.status_code,
+                "response": result
+            }
+
+        return result
+
+    except requests.exceptions.Timeout:
+        return {
+            "error": "The API request timed out.",
+            "details": (
+                "The API may be waking up after inactivity. "
+                "Please try again."
+            )
+        }
+
+    except requests.exceptions.ConnectionError:
+        return {
+            "error": "Unable to connect to the Flask API.",
+            "details": (
+                "Check that the API is running and that "
+                "API_BASE_URL is configured correctly."
+            )
+        }
+
+    except requests.exceptions.RequestException as error:
+        return {
+            "error": "An unexpected request error occurred.",
+            "details": str(error)
+        }
+
+
+# ============================================================
+# 1. DAILY SALES REVENUE REGRESSION
+# ============================================================
+
+def predict_daily_sales(
+    store_size_sqm,
+    num_staff,
+    footfall_count,
+    promotions_active,
+    avg_basket_size_kes,
+    local_events_nearby,
+    store_format,
+    location_type,
+    delivery_available,
+    store_size_category,
+    store_age_years,
+    online_order_count,
+    loyalty_program_members
+):
+
     payload = {
-        "sector": sector, "county": county, "quarter": quarter,
-        "business_age_years": business_age_years, "num_employees": num_employees,
-        "owner_education_level": owner_education_level,
-        "monthly_marketing_spend_kes": monthly_marketing_spend_kes,
-        # A Gradio Number field cannot submit a literal null; 0 is used here
-        # as a stand-in for "not applicable" when the field is left blank.
-        "avg_daily_foot_traffic": avg_daily_foot_traffic or None,
-        "online_presence_score": online_presence_score,
-        "loan_amount_kes": loan_amount_kes, "interest_rate_pct": interest_rate_pct,
-        "inflation_rate_pct": inflation_rate_pct,
-        "competitor_density": competitor_density,
-        "customer_satisfaction_score": customer_satisfaction_score,
+        "store_size_sqm": store_size_sqm,
+        "num_staff": num_staff,
+        "footfall_count": footfall_count,
+        "promotions_active": (
+            1.0 if promotions_active == "Yes" else 0.0
+        ),
+        "avg_basket_size_kes": avg_basket_size_kes,
+        "local_events_nearby": (
+            1.0 if local_events_nearby == "Yes" else 0.0
+        ),
+        "store_format": store_format,
+        "location_type": location_type,
+        "delivery_available": delivery_available,
+        "store_size_category": store_size_category,
+        "store_age_years": store_age_years,
+        "online_order_count": online_order_count,
+        "loyalty_program_members": loyalty_program_members
     }
-    input_row = pd.DataFrame([payload])
-    predicted_log_revenue = regression_pipeline.predict(input_row)[0]
-    predicted_revenue_kes = float(np.expm1(predicted_log_revenue))
-    return f"KES {predicted_revenue_kes:,.2f} / month"
 
-
-# -----------------------------------------------------------------------
-# 2. Classification -- predict SME credit risk category
-# -----------------------------------------------------------------------
-def predict_credit_risk(sector, county, quarter, loan_purpose, owner_education_level,
-                         business_age_years, num_employees, monthly_revenue_kes,
-                         loan_amount_kes, loan_term_months, interest_rate_pct,
-                         collateral_value_kes, debt_to_income_ratio, credit_score,
-                         num_previous_loans, missed_payments_count,
-                         online_presence_score, customer_satisfaction_score,
-                         competitor_density):
-    payload = {
-        "sector": sector, "county": county, "quarter": quarter,
-        "loan_purpose": loan_purpose, "owner_education_level": owner_education_level,
-        "business_age_years": business_age_years, "num_employees": num_employees,
-        "monthly_revenue_kes": monthly_revenue_kes, "loan_amount_kes": loan_amount_kes,
-        "loan_term_months": loan_term_months, "interest_rate_pct": interest_rate_pct,
-        "collateral_value_kes": collateral_value_kes or None,
-        "debt_to_income_ratio": debt_to_income_ratio, "credit_score": credit_score,
-        "num_previous_loans": num_previous_loans,
-        "missed_payments_count": missed_payments_count,
-        "online_presence_score": online_presence_score,
-        "customer_satisfaction_score": customer_satisfaction_score,
-        "competitor_density": competitor_density,
-    }
-    input_row = pd.DataFrame([payload])
-    predicted_class = classification_pipeline.predict(input_row)[0]
-    predicted_probabilities = classification_pipeline.predict_proba(input_row)[0]
-    class_labels = classification_pipeline.named_steps["model"].classes_
-    probability_lines = "\n".join(
-        f"  {label}: {prob:.1%}" for label, prob in zip(class_labels, predicted_probabilities)
+    return call_api(
+        "/api/v1/models/daily-sales-revenue-regressor/predictions",
+        payload
     )
-    return f"Predicted category: {predicted_class}\n\n{probability_lines}"
 
 
-# -----------------------------------------------------------------------
-# 3. Clustering -- assign a new mall customer to an existing segment
-# -----------------------------------------------------------------------
-def predict_segment(age, annual_income_k, spending_score):
-    input_row = pd.DataFrame([{
-        "Age": age,
-        "Annual Income (k$)": annual_income_k,
-        "Spending Score (1-100)": spending_score,
-    }])
-    scaled_input = clustering_scaler.transform(input_row)
-    cluster = int(clustering_kmeans.predict(scaled_input)[0])
-    return f"Assigned segment: Cluster {cluster}"
+# ============================================================
+# 2. BUSINESS DISTRESS RISK CLASSIFICATION
+# ============================================================
+
+def predict_distress_risk(
+    debt_to_equity_ratio,
+    interest_coverage_ratio,
+    current_ratio,
+    working_capital_to_assets_ratio,
+    net_profit_margin_pct,
+    revenue_growth_pct
+):
+
+    payload = {
+        "debt_to_equity_ratio": debt_to_equity_ratio,
+        "interest_coverage_ratio": interest_coverage_ratio,
+        "current_ratio": current_ratio,
+        "working_capital_to_assets_ratio": (
+            working_capital_to_assets_ratio
+        ),
+        "net_profit_margin_pct": net_profit_margin_pct,
+        "revenue_growth_pct": revenue_growth_pct
+    }
+
+    return call_api(
+        "/api/v1/models/distress-risk-classifier/predictions",
+        payload
+    )
 
 
-# -----------------------------------------------------------------------
-# 4. Association Rule Mining -- recommend products for a shopping cart
-# -----------------------------------------------------------------------
-def recommend_products(cart_text, top_n):
-    cart = {sku.strip() for sku in cart_text.split(",") if sku.strip()}
-    candidates = {}
-    for antecedent, consequent_list in recommendation_lookup.items():
-        if antecedent.issubset(cart):
-            for sku, confidence, lift in consequent_list:
-                if sku not in cart:
-                    if sku not in candidates or confidence > candidates[sku][0]:
-                        candidates[sku] = (confidence, lift)
+# ============================================================
+# 3. CUSTOMER SEGMENTATION
+# ============================================================
 
-    ranked = sorted(candidates.items(), key=lambda item: item[1][0], reverse=True)[:int(top_n)]
-    if not ranked:
-        return "No recommendations for this cart -- try a SKU combination seen in the training orders."
+def predict_customer_segment(
+    recency_days,
+    frequency_per_year,
+    avg_order_value_kes,
+    num_categories_purchased
+):
 
-    lines = [
-        f"{sku_lookup.loc[sku, 'product_name']} ({sku})  --  "
-        f"confidence {confidence:.1%}, lift {lift:.2f}"
-        for sku, (confidence, lift) in ranked
-    ]
-    return "\n".join(lines)
+    payload = {
+        "recency_days": recency_days,
+        "frequency_per_year": frequency_per_year,
+        "avg_order_value_kes": avg_order_value_kes,
+        "num_categories_purchased": num_categories_purchased
+    }
+
+    if all(value is None for value in payload.values()):
+        return {
+            "error": "Please enter at least one customer feature."
+        }
+
+    for feature, value in payload.items():
+        if value is not None and value < 0:
+            return {
+                "error": f"{feature} cannot be negative."
+            }
+
+    return call_api(
+        "/api/v1/models/customer-segmenter/predictions",
+        payload
+    )
 
 
-# -----------------------------------------------------------------------
-# One gr.Blocks() app, four gr.Tab()s -- one shared Space URL, no linking
-# between separately-hosted demos required.
-# -----------------------------------------------------------------------
-with gr.Blocks(title="BBT 4206 Model Validation Demos") as demo:
-    gr.Markdown("# BBT 4206 -- Model Validation Demos\nSwitch tabs to try a different model.")
+# ============================================================
+# 4. STREAMING SHOW RECOMMENDATIONS
+# ============================================================
 
-    with gr.Tab("SME Revenue Regressor"):
-        gr.Interface(
-            fn=predict_revenue,
-            inputs=[
-                gr.Textbox(label="Sector", value="Technology"),
-                gr.Textbox(label="County", value="Nairobi"),
-                gr.Textbox(label="Quarter", value="Q3"),
-                gr.Number(label="Business Age (years)", value=4.5),
-                gr.Number(label="Number of Employees", value=12),
-                # These four categories are the exact set the pipeline's
-                # OrdinalEncoder was fitted on -- any other string raises
-                # "Found unknown categories" at predict time.
-                gr.Dropdown(label="Owner Education Level",
-                            choices=["Primary", "Secondary", "Tertiary", "Postgraduate"],
-                            value="Secondary"),
-                gr.Number(label="Monthly Marketing Spend (KES)", value=45000),
-                gr.Number(label="Avg Daily Foot Traffic (leave 0 if not applicable)", value=0),
-                gr.Number(label="Online Presence Score", value=78.0),
-                gr.Number(label="Loan Amount (KES)", value=250000),
-                gr.Number(label="Interest Rate (%)", value=14.5),
-                gr.Number(label="Inflation Rate (%)", value=6.5),
-                gr.Number(label="Competitor Density", value=5),
-                gr.Number(label="Customer Satisfaction Score", value=4.2),
-            ],
-            outputs=gr.Textbox(label="Predicted Monthly Revenue"),
+SHOW_CHOICES = [
+    "Crime City",
+    "The Detective",
+    "Silent Witness Redux",
+    "Laugh Track",
+    "Office Antics",
+    "Space Frontier",
+    "Galactic Wars",
+    "Time Anomaly",
+    "Toon Town",
+    "Little Explorers",
+    "Real Life Diaries",
+    "Love Island Nairobi",
+    "True Crime Files",
+    "Parenting Unscripted",
+    "Cooking Masters"
+]
+
+
+def recommend_streaming_shows(watched, top_n):
+
+    if not watched:
+        return {
+            "error": "Please select at least one show you have watched."
+        }
+
+    payload = {
+        "watched": watched,
+        "top_n": int(top_n)
+    }
+
+    return call_api(
+        "/api/v1/models/streaming-recommender/predictions",
+        payload
+    )
+
+
+# ============================================================
+# GRADIO USER INTERFACE
+# ============================================================
+
+with gr.Blocks(
+    title="Business Intelligence Model Prediction System"
+) as demo:
+
+    gr.Markdown(
+        """
+        # Business Intelligence Model Prediction System
+
+        Explore four machine learning models through one
+        interactive application.
+
+        Select a model tab, provide the required inputs,
+        and submit them to generate a prediction.
+
+        **Powered by a Flask REST API**
+        """
+    )
+
+    # --------------------------------------------------------
+    # TAB 1: REGRESSION
+    # --------------------------------------------------------
+
+    with gr.Tab("Daily Sales Revenue Prediction"):
+
+        gr.Markdown(
+            """
+            ### Daily Sales Revenue Regressor
+
+            Predict the expected daily sales revenue of a store
+            using its operational and business characteristics.
+
+            **Model:** Ridge Regression
+            """
         )
 
-    with gr.Tab("SME Credit Risk Classifier"):
-        gr.Interface(
-            fn=predict_credit_risk,
-            inputs=[
-                gr.Textbox(label="Sector", value="Retail"),
-                gr.Textbox(label="County", value="Nairobi"),
-                gr.Textbox(label="Quarter", value="Q2"),
-                gr.Textbox(label="Loan Purpose", value="Working Capital"),
-                gr.Dropdown(label="Owner Education Level",
-                            choices=["Primary", "Secondary", "Tertiary", "Postgraduate"],
-                            value="Secondary"),
-                gr.Number(label="Business Age (years)", value=2.1),
-                gr.Number(label="Number of Employees", value=4),
-                gr.Number(label="Monthly Revenue (KES)", value=850000),
-                gr.Number(label="Loan Amount (KES)", value=150000),
-                gr.Number(label="Loan Term (months)", value=12),
-                gr.Number(label="Interest Rate (%)", value=16.5),
-                gr.Number(label="Collateral Value (leave 0 if unsecured)", value=0),
-                gr.Number(label="Debt-to-Income Ratio", value=0.62),
-                gr.Number(label="Credit Score", value=590),
-                gr.Number(label="Number of Previous Loans", value=1),
-                gr.Number(label="Missed Payments Count", value=3),
-                gr.Number(label="Online Presence Score", value=40.0),
-                gr.Number(label="Customer Satisfaction Score", value=3.4),
-                gr.Number(label="Competitor Density", value=6),
-            ],
-            outputs=gr.Textbox(label="Predicted Credit Risk Category"),
+        with gr.Row():
+            store_size_sqm = gr.Number(
+                label="Store Size (square metres)",
+                value=150
+            )
+
+            num_staff = gr.Number(
+                label="Number of Staff",
+                value=10
+            )
+
+            footfall_count = gr.Number(
+                label="Daily Footfall Count",
+                value=300
+            )
+
+        with gr.Row():
+            promotions_active = gr.Radio(
+                ["Yes", "No"],
+                label="Are Promotions Active?",
+                value="Yes"
+            )
+
+            avg_basket_size_kes = gr.Number(
+                label="Average Basket Size (KES)",
+                value=1200
+            )
+
+            local_events_nearby = gr.Radio(
+                ["Yes", "No"],
+                label="Are There Local Events Nearby?",
+                value="No"
+            )
+
+        with gr.Row():
+            store_format = gr.Dropdown(
+                choices=[
+                    "Supermarket",
+                    "Convenience",
+                    "Hypermarket",
+                    "Kiosk"
+                ],
+                label="Store Format",
+                value="Supermarket"
+            )
+
+            location_type = gr.Dropdown(
+                choices=[
+                    "CBD",
+                    "Mall",
+                    "Residential",
+                    "Street"
+                ],
+                label="Location Type",
+                value="CBD"
+            )
+
+            delivery_available = gr.Dropdown(
+                choices=["Yes", "No"],
+                label="Delivery Available",
+                value="Yes"
+            )
+
+        with gr.Row():
+            store_size_category = gr.Dropdown(
+                choices=["Small", "Medium", "Large"],
+                label="Store Size Category",
+                value="Medium"
+            )
+
+            store_age_years = gr.Number(
+                label="Store Age (Years)",
+                value=3.5
+            )
+
+        with gr.Row():
+            online_order_count = gr.Number(
+                label="Online Order Count",
+                value=45
+            )
+
+            loyalty_program_members = gr.Number(
+                label="Loyalty Programme Members",
+                value=150
+            )
+
+        regression_button = gr.Button(
+            "Predict Daily Sales Revenue",
+            variant="primary"
         )
 
-    with gr.Tab("Mall Customer Segmenter"):
-        gr.Interface(
-            fn=predict_segment,
-            inputs=[
-                gr.Number(label="Age", value=27),
-                gr.Number(label="Annual Income (k$)", value=45),
-                gr.Number(label="Spending Score (1-100)", value=72),
-            ],
-            outputs=gr.Textbox(label="Prediction"),
+        regression_output = gr.JSON(
+            label="Prediction Result"
         )
 
-    with gr.Tab("E-commerce Recommender"):
-        gr.Interface(
-            fn=recommend_products,
+        regression_button.click(
+            fn=predict_daily_sales,
             inputs=[
-                gr.Textbox(label="Cart (comma-separated SKUs)", value="H06, H07"),
-                gr.Number(label="Top N Recommendations", value=3),
+                store_size_sqm,
+                num_staff,
+                footfall_count,
+                promotions_active,
+                avg_basket_size_kes,
+                local_events_nearby,
+                store_format,
+                location_type,
+                delivery_available,
+                store_size_category,
+                store_age_years,
+                online_order_count,
+                loyalty_program_members
             ],
-            outputs=gr.Textbox(label="Recommendations"),
+            outputs=regression_output
         )
 
+    # --------------------------------------------------------
+    # TAB 2: CLASSIFICATION
+    # --------------------------------------------------------
+
+    with gr.Tab("Business Distress Risk Classification"):
+
+        gr.Markdown(
+            """
+            ### Business Distress Risk Classifier
+
+            Assess the financial distress risk category of a
+            business using selected financial indicators.
+
+            **Model:** Logistic Regression
+            """
+        )
+
+        with gr.Row():
+            debt_to_equity_ratio = gr.Number(
+                label="Debt-to-Equity Ratio",
+                value=1.5
+            )
+
+            interest_coverage_ratio = gr.Number(
+                label="Interest Coverage Ratio",
+                value=2.0
+            )
+
+            current_ratio = gr.Number(
+                label="Current Ratio",
+                value=1.2
+            )
+
+        with gr.Row():
+            working_capital_to_assets_ratio = gr.Number(
+                label="Working Capital-to-Assets Ratio",
+                value=0.4
+            )
+
+            net_profit_margin_pct = gr.Number(
+                label="Net Profit Margin (%)",
+                value=12.5
+            )
+
+            revenue_growth_pct = gr.Number(
+                label="Revenue Growth (%)",
+                value=8.0
+            )
+
+        classification_button = gr.Button(
+            "Assess Business Distress Risk",
+            variant="primary"
+        )
+
+        classification_output = gr.JSON(
+            label="Classification Result"
+        )
+
+        classification_button.click(
+            fn=predict_distress_risk,
+            inputs=[
+                debt_to_equity_ratio,
+                interest_coverage_ratio,
+                current_ratio,
+                working_capital_to_assets_ratio,
+                net_profit_margin_pct,
+                revenue_growth_pct
+            ],
+            outputs=classification_output
+        )
+
+    # --------------------------------------------------------
+    # TAB 3: CUSTOMER SEGMENTATION
+    # --------------------------------------------------------
+
+    with gr.Tab("Customer Segmentation"):
+
+        gr.Markdown(
+            """
+            ### Customer Segmenter
+
+            Identify the customer segment based on purchasing
+            behaviour and engagement characteristics.
+
+            **Model:** K-Means Clustering
+
+            Leave an unknown feature blank if its value is unavailable.
+            The API's preprocessing pipeline handles missing values.
+            """
+        )
+
+        with gr.Row():
+            recency_days = gr.Number(
+                label="Recency (Days)",
+                value=20
+            )
+
+            frequency_per_year = gr.Number(
+                label="Purchase Frequency per Year",
+                value=22
+            )
+
+        with gr.Row():
+            avg_order_value_kes = gr.Number(
+                label="Average Order Value (KES)",
+                value=8000
+            )
+
+            num_categories_purchased = gr.Number(
+                label="Number of Categories Purchased",
+                value=6
+            )
+
+        segmentation_button = gr.Button(
+            "Identify Customer Segment",
+            variant="primary"
+        )
+
+        segmentation_output = gr.JSON(
+            label="Customer Segmentation Result"
+        )
+
+        segmentation_button.click(
+            fn=predict_customer_segment,
+            inputs=[
+                recency_days,
+                frequency_per_year,
+                avg_order_value_kes,
+                num_categories_purchased
+            ],
+            outputs=segmentation_output
+        )
+
+    # --------------------------------------------------------
+    # TAB 4: STREAMING RECOMMENDATIONS
+    # --------------------------------------------------------
+
+    with gr.Tab("Streaming Show Recommendations"):
+
+        gr.Markdown(
+            """
+            ### Streaming Recommendation System
+
+            Select the shows you have already watched to receive
+            personalised recommendations.
+
+            **Model:** Apriori Association Rules
+
+            The system can also use a popularity-based fallback
+            when no matching association rule is available.
+            """
+        )
+
+        watched = gr.CheckboxGroup(
+            choices=SHOW_CHOICES,
+            label="Select Shows You Have Watched",
+            value=[]
+        )
+
+        top_n = gr.Slider(
+            minimum=1,
+            maximum=10,
+            step=1,
+            value=3,
+            label="Number of Recommendations"
+        )
+
+        recommendation_button = gr.Button(
+            "Recommend Shows",
+            variant="primary"
+        )
+
+        recommendation_output = gr.JSON(
+            label="Recommended Shows"
+        )
+
+        recommendation_button.click(
+            fn=recommend_streaming_shows,
+            inputs=[
+                watched,
+                top_n
+            ],
+            outputs=recommendation_output
+        )
+
+    gr.Markdown(
+        """
+        ---
+        **Business Intelligence Model Prediction System**
+
+        Predictions are generated through the project's Flask
+        REST API. Results depend on the trained models and
+        the input values supplied.
+        """
+    )
+
+
+# ============================================================
+# APPLICATION ENTRY POINT
+# ============================================================
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        theme=gr.themes.Soft()
+    )
