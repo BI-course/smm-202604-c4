@@ -3,7 +3,15 @@ import os
 import requests
 import gradio as gr
 
+import spaces
 
+
+# ZeroGPU startup registration
+@spaces.GPU
+def _warm_zerogpu():
+    return None
+
+_warm_zerogpu()
 # ============================================================
 # CONFIGURATION
 # ============================================================
