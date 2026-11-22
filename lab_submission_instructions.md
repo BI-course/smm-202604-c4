@@ -83,7 +83,7 @@ Fill in only the rows that apply to your chosen difficulty level (see Part C bel
 
 | **Deployment target**                             | **URL**                                                     |
 | :------------------------------------------------ | :---------------------------------------------------------- |
-| Render (the full `api.py`, all endpoints)         |   https://smm-202604-c4-clara.onrender.com                                                          |
+| Render (the full `api.py`, all endpoints)         |                                                      |
 | Hugging Face Space (Gradio, one tab per model)    |    https://huggingface.co/spaces/ClaritaW/business-intelligence-models                                                         |
 | Streamlit Community Cloud app (one tab per model) | https://smm-202604-c4-ucssviswc2txbs2t3pf6kx.streamlit.app/ |
 
