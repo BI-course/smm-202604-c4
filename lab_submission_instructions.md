@@ -6,11 +6,11 @@
 
 **Member 1:**
 
-| **Details**                                                                                                                           | **Comment** |
-| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
-| **Student ID**                                                                                                                        |             |
-| **Name**                                                                                                                              |             |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
+| **Details**                                                                                                                           | **Comment**            |
+|:--------------------------------------------------------------------------------------------------------------------------------------|:-----------------------|
+| **Student ID**                                                                                                                        | 150367                 |
+| **Name**                                                                                                                              | Christine Nessy Mungla |
+| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** | My contribution to the lab focused on the implementation of the regression and classification endpoints. I worked on the development branch feature/regression-classification-endpoints, which involved working on the API functionality for integrating machine learning models with the application. Through this task, I learned how regression and classification models can be exposed through API endpoints to make predictions. I also gained a better understanding of backend development, how endpoints handle requests and responses, and how machine learning functionality can be integrated into an application.https://github.com/BI-course/smm-202604-c4/tree/feature/regression-classification-endpoints                      |
 
 **Member 2:**
 
