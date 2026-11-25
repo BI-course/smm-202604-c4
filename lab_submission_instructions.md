@@ -30,12 +30,11 @@
 
 **Member 4:**
 
-| **Details**                                                                                                                           | **Comment** |
-| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
-| **Student ID**                                                                                                                        |             |
-| **Name**                                                                                                                              |             |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
-
+| **Details** | **Comment** |
+| :---------- | :---------- |
+| **Student ID** | 167284 |
+| **Name** | Nyaga Gacheru |
+| **What part of the lab did you personally<br>contribute to (provide a link to the<br>branch(es)), and what did you learn from it?** | **Contribution:** Deployed our Flask ML API (`api.py`) publicly on Render (`https://smm-202604-c4-nyaga.onrender.com`) via Gunicorn, built and connected the custom HTML, CSS, and Vanilla JavaScript frontend pages (`index.html`, `daily_sales_revenue_regressor.html`, `distress_risk_classifier.html`, `customer_segmenter.html`, `streaming_recommender.html`, and `config.js`) with client-side missing-input validation and API error handling, and fixed a scikit-learn `SimpleImputer` `float64` input-casting bug in the daily sales revenue regression endpoint.<br><br>**Branch & Pull Request:**<br>- Feature Branch: https://github.com/BI-course/smm-202604-c4/tree/feature/render-frontend<br>- Merged PR (#4): https://github.com/BI-course/smm-202604-c4/pull/4<br><br>**What I Learned:**<br>1. **Cloud Deployment & Environment Parity:** Learned how to configure Gunicorn and environment settings on Render so the exact same saved model artifacts and Flask endpoints run reliably outside a local development machine.<br>2. **API Integration & Error Handling:** Learned how decoupled frontends consume REST endpoints via `fetch()`, why client-side input validation and structured JSON errors (`400 Bad Request`) are essential, and how data-type mismatches (integer vs. `float64` arrays in scikit-learn pipelines) surface during live API integration. |
 **Member 5:**
 
 | **Details**                                                                                                                            | **Comment** |
@@ -85,6 +84,8 @@ Fill in only the rows that apply to your chosen difficulty level (see Part C bel
 | :------------------------------------------------ | :---------------------------------------------------------- |
 | Render (the full `api.py`, all endpoints)         |                                                      |
 | Hugging Face Space (Gradio, one tab per model)    |    https://huggingface.co/spaces/ClaritaW/business-intelligence-models                                                         |
+| Render (the full `api.py`, all endpoints)         |   https://smm-202604-c4-nyaga.onrender.com                                                          |
+| Hugging Face Space (Gradio, one tab per model)    |                                                             |
 | Streamlit Community Cloud app (one tab per model) | https://smm-202604-c4-ucssviswc2txbs2t3pf6kx.streamlit.app/ |
 
 ---
