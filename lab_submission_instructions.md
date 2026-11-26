@@ -2,7 +2,7 @@
 
 ## Student Details and Individual Member Contributions
 
-**Name of the team on GitHub Classroom:**
+**Name of the team on GitHub Classroom:** 202604-c4
 
 **Member 1:**
 
@@ -14,11 +14,11 @@
 
 **Member 2:**
 
-| **Details**                                                                                                                           | **Comment** |
-| :------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
-| **Student ID**                                                                                                                        |             |
-| **Name**                                                                                                                              |             |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |             |
+| **Details**                                                                                                                           | **Comment**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| :------------------------------------------------------------------------------------------------------------------------------------ |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Student ID**                                                                                                                        | 169223                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Name**                                                                                                                              | Lukwago Bernard Desmond                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** | In the lab, I was Member 2, responsible for the clustering and association-rule endpoints in the shared api.py. I added a customer segmentation endpoint that loads the saved preprocessor and K-Means model and returns the segment name and profile. I also added a streaming recommender endpoint that loads the saved association rules and recommends shows from what a viewer has watched. Both models load once at startup and are never retrained. I added input checks that return clear errors, and a popular-shows fallback when no rule matches. <br/>I tested both with curl and found that our models were saved with scikit-learn 1.6.1 while the project pinned a newer version. I then set the pin to 1.6.1 and removed mlxtend, which conflicted with it. I committed on my own feature branch, and shared the version changes with the Docker and Render owners. What I learned is that a trained pipeline can be saved and served as an API, and that matching library versions, data types and the deployment setup is as important as the model itself. I also practised careful Git use and teamwork on a shared file. Link To Branch: https://github.com/BI-course/smm-202604-c4/tree/feature/clustering-recommender-endpoints |
 
 **Member 3:**
 
@@ -35,6 +35,8 @@
 | **Student ID** | 167284 |
 | **Name** | Nyaga Gacheru |
 | **What part of the lab did you personally<br>contribute to (provide a link to the<br>branch(es)), and what did you learn from it?** | **Contribution:** Deployed our Flask ML API (`api.py`) publicly on Render (`https://smm-202604-c4-nyaga.onrender.com`) via Gunicorn, built and connected the custom HTML, CSS, and Vanilla JavaScript frontend pages (`index.html`, `daily_sales_revenue_regressor.html`, `distress_risk_classifier.html`, `customer_segmenter.html`, `streaming_recommender.html`, and `config.js`) with client-side missing-input validation and API error handling, and fixed a scikit-learn `SimpleImputer` `float64` input-casting bug in the daily sales revenue regression endpoint.<br><br>**Branch & Pull Request:**<br>- Feature Branch: https://github.com/BI-course/smm-202604-c4/tree/feature/render-frontend<br>- Merged PR (#4): https://github.com/BI-course/smm-202604-c4/pull/4<br><br>**What I Learned:**<br>1. **Cloud Deployment & Environment Parity:** Learned how to configure Gunicorn and environment settings on Render so the exact same saved model artifacts and Flask endpoints run reliably outside a local development machine.<br>2. **API Integration & Error Handling:** Learned how decoupled frontends consume REST endpoints via `fetch()`, why client-side input validation and structured JSON errors (`400 Bad Request`) are essential, and how data-type mismatches (integer vs. `float64` arrays in scikit-learn pipelines) surface during live API integration. |
+
+
 **Member 5:**
 
 | **Details**                                                                                                                            | **Comment** |
@@ -58,7 +60,7 @@ I built the Streamlit Community Cloud app, which acts as a no-code demo UI. I de
 
 ## Chosen Level of Difficulty
 
-**Specify the chosen level of difficulty** (baseline, intermediate, or advanced):
+**Specify the chosen level of difficulty** (baseline, intermediate, or advanced): Baseline, intermediate and advanced
 
 ## Video Demonstration
 
@@ -74,7 +76,7 @@ At minimum, the video must show, in one continuous walkthrough:
 
 Note that you are required to submit the link to the video and NOT the video itself. The video should NOT be uploaded to your repository—that would be a misuse of GitHub.
 
-**Link to the video:**
+**Link to the video:** https://drive.google.com/drive/folders/1sg5Q8jIuHVP8aKD14hicga8JCEeGhS8S?usp=sharing
 
 ## Public URLs
 
@@ -82,10 +84,8 @@ Fill in only the rows that apply to your chosen difficulty level (see Part C bel
 
 | **Deployment target**                             | **URL**                                                     |
 | :------------------------------------------------ | :---------------------------------------------------------- |
-| Render (the full `api.py`, all endpoints)         |                                                      |
+| Render (the full `api.py`, all endpoints)         |       https://smm-202604-c4-nyaga.onrender.com                                                |
 | Hugging Face Space (Gradio, one tab per model)    |    https://huggingface.co/spaces/ClaritaW/business-intelligence-models                                                         |
-| Render (the full `api.py`, all endpoints)         |   https://smm-202604-c4-nyaga.onrender.com                                                          |
-| Hugging Face Space (Gradio, one tab per model)    |                                                             |
 | Streamlit Community Cloud app (one tab per model) | https://smm-202604-c4-ucssviswc2txbs2t3pf6kx.streamlit.app/ |
 
 ---
