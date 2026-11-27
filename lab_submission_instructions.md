@@ -38,14 +38,11 @@
 
 **Member 5:**
 
-| **Details**                                                                                                                            | **Comment** |
-| :------------------------------------------------------------------------------------------------------------------------------------ | :--  -------- |
-| **Student ID**                 167753                                                                                                    |                |
-| **Name**                    Clara Waithaka                                                                                                       |              |
-| **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?** |Developed and deployed a Gradio-based web application integrating all four machine learning models through the group's Flask API hosted on Render. Implemented a single Gradio interface with four tabs for Daily Sales Revenue Prediction, Business Distress Risk Classification, Customer Segmentation, and Streaming Recommendations. Configured API communication, handled prediction responses, and prepared the application for deployment on Hugging Face Spaces, including ZeroGPU startup registration and dependency configuration.
-
-Successfully tested all four model prediction functionalities locally and on the public Hugging Face Space.
-|                https://github.com/BI-course/smm-202604-c4/tree/feature/gradio-space                                                                                                                       |
+| **Details** | **Comment** |
+|:------------|:------------|
+| **Student ID:** | 167753 |
+| **Name:** | Clara Waithaka |
+| **What part of the lab did you personally contribute to (provide a link to the branch(es)), and what did you learn from it?** | Developed and deployed a Gradio-based web application integrating all four machine learning models through the group's Flask API hosted on Render. Implemented a single Gradio interface with four tabs for Daily Sales Revenue Prediction, Business Distress Risk Classification, Customer Segmentation, and Streaming Recommendations. Configured API communication, handled prediction responses, and prepared the application for deployment on Hugging Face Spaces, including ZeroGPU startup registration and dependency configuration.<br><br>Successfully tested all four model prediction functionalities locally and on the public Hugging Face Space.<br><br>https://github.com/BI-course/smm-202604-c4/tree/feature/gradio-space |
 
 **Member 6:**
 
