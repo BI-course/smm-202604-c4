@@ -50,8 +50,8 @@
 | **Details** | **Comment** |
 | :---------- | :---------- |
 
-| **Student ID** 165828 **Name** Daniela Dudi Awino
-| |
+| **Student ID** | 165828 |
+**Name** |Daniela Dudi Awino |
 | **What part of the lab did you personally<br/>contribute to (provide a link to the<br/>branch(es)), and what did you learn from it?**
 I built the Streamlit Community Cloud app, which acts as a no-code demo UI. I designed a four-tab interface (one for each model) that loads the pre-trained .joblib artifacts directly into memory using joblib and @st.cache_resource. Through this, I learned how to translate backend machine learning models into interactive, user-friendly web applications, how to manage virtual environments and dependencies (imbalanced-learn), and how to deploy Streamlit apps to the cloud. Link to my branch: | https://github.com/BI-course/smm-202604-c4/tree/feature/gradio-space
 
